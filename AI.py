@@ -54,6 +54,10 @@ class State:
 	def __str__(self):
 		return ",".join(map(str,[self.NumCards,self.NumAce, self.FixedCardVal,self.BetVal]))
 
+	def __repr__(self):
+		return ",".join(map(str,[self.NumCards,self.NumAce, self.FixedCardVal,self.BetVal]))
+
+
 def PossibleScores(inputState):
 	posscores=[inputState.FixedCardVal]
 	for i in xrange(inputState.NumAce):
@@ -64,22 +68,69 @@ def PossibleScores(inputState):
 		posscores += temp
 	return posscores
 
+def GetMaxValidScore(inputState):
+	posscores = PossibleScores(inputState)
+	msofar=0
+	for elem in posscores:
+		if elem <=21:
+			msofar = max(msofar,elem)
+	return msofar
+
+def CalculateWinningStatic(arr,elem):
+	ans=0
+	for i in xrange(0,elem):
+		ans+=arr[i]
+	return ans
+
+def MakeChildren(inputState):
+	ns1 =State(inputState.NumCards+1, inputState.NumAce +1, inputState.FixedCardVal, inputState.BetVal)
+	ans=[]
+	if GetMaxValidScore(ns1):
+		ans.append((ns1,1.0/13))
+	for i in xrange(1,10):
+		# TODO: Remove nonsensical states entirely
+		newstate=(State(inputState.NumCards+1, inputState.NumAce,i+inputState.FixedCardVal, inputState.BetVal),1.0/13.0)
+		if GetMaxValidScore>0:
+			ans.append(newstate)
+	return ans
+
 def DecideMove(s):
+	# print s, GetMaxValidScore(s)
 	global AllStatePolicies
 	if s in AllStatePolicies:
+		return AllStatePolicies[s]
+	elif GetMaxValidScore(s)==0:
+		AllStatePolicies[s]=("H",0.0)
 		return AllStatePolicies[s]
 	else:
 		possibilities= ["H","S"]
 		# Considering S
+		presscore = GetMaxValidScore(s)
+		WinningAmountS = CalculateWinningStatic(DealerProb, presscore)
 
+		# Considering H
+		AllChildren = MakeChildren(s)
+		if len(AllChildren):
+			MovesDecided = map(lambda x: x[1]*DecideMove(x[0])[1], AllChildren)
+			WinningAmountH = sum(MovesDecided)
 
-p=State(2, 0, 6,1)
+			if WinningAmountH>WinningAmountS:
+				AllStatePolicies[s]= ("H",WinningAmountH)
+			else:
+				AllStatePolicies[s]=("S",WinningAmountS) 
+		else:
+			AllStatePolicies[s]=("S",WinningAmountS) 	
+		return AllStatePolicies[s]
+
+p=State(2,0,6,1)
 q=State(2,0,6,1)
 print PossibleScores(p)
 # print p==q
 a={}
 a[p]="H"
 a[q]="D"
-print str(q)
-print p in a
+# print str(q)
+# print MakeChildren(p)
+# print p in a
+print DecideMove(p)
 # print len(ans)
