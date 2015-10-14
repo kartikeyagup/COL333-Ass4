@@ -1,34 +1,14 @@
 import copy
-# DictMapping = {}
+from Dealer import EvaluateProb
 
+p = 0.35
 n=40
-DealerProb = [1.0/n for i in xrange(n)]
-
-# def GetMove():
-
-
-# def Calcval(initset):
-
-
-# def MakeProbabilities(initset,probface):
-# 	global DictMapping
-# 	if Calcval(initset)<=21:
-# 		probnormal = (1 - probface)/
-
-# a=[[]]
-# b=[i+1 for i in xrange(11)]
-
-# ans=[]
-# while len(a):
-# 	s=a.pop()
-# 	if sum(s)>=21:
-# 		ans.append(s)
-# 	else:
-# 		for elem in b:
-# 			a+=[s+[elem]]
+DealerProb = EvaluateProb(p)
+# print DealerProb
+# 2 is 0th element and so on
 
 AllStatePolicies={}
-# State -> (Move, Neutral Score Beyond This Point, )
+# State -> (Move, Probability Winning)
 
 def GetExpectedScore(l1,l2,amt):
 	ans=0.0
@@ -86,18 +66,24 @@ def MakeChildren(inputState):
 	ns1 =State(inputState.NumCards+1, inputState.NumAce +1, inputState.FixedCardVal, inputState.BetVal)
 	ans=[]
 	if GetMaxValidScore(ns1):
-		ans.append((ns1,1.0/13))
+		ans.append((ns1,(1.0-p)/9))
 	for i in xrange(1,10):
-		# TODO: Remove nonsensical states entirely
-		newstate=(State(inputState.NumCards+1, inputState.NumAce,i+inputState.FixedCardVal, inputState.BetVal),1.0/13.0)
+		newstate=(State(inputState.NumCards+1, inputState.NumAce,i+inputState.FixedCardVal, inputState.BetVal),(1.0-p)/9.0)
 		if GetMaxValidScore>0:
 			ans.append(newstate)
+	newstate=(State(inputState.NumCards+1, inputState.NumAce,10+inputState.FixedCardVal, inputState.BetVal),p)
+	if GetMaxValidScore>0:
+		ans.append(newstate)
 	return ans
+
+Allcount=0
 
 def DecideMove(s):
 	# print s, GetMaxValidScore(s)
 	global AllStatePolicies
 	if s in AllStatePolicies:
+		global Allcount
+		Allcount+=1
 		return AllStatePolicies[s]
 	elif GetMaxValidScore(s)==0:
 		AllStatePolicies[s]=("H",0.0)
@@ -132,5 +118,9 @@ a[q]="D"
 # print str(q)
 # print MakeChildren(p)
 # print p in a
-print DecideMove(p)
+# print DecideMove(p)
+# print Allcount
 # print len(ans)
+
+for elem in DealerProb:
+	print elem
