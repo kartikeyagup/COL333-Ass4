@@ -28,7 +28,13 @@ def PossibleScores(inputState):
 			temp[i]+=11
 			posscores[i]+=1
 		posscores += temp
-	return posscores
+	valid = []
+	for elem in posscores:
+		if elem<=21:
+			valid.append(elem)
+	if len(valid)==0:
+		valid=[min(posscores)]
+	return valid
 
 
 
