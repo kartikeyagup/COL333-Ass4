@@ -1,0 +1,1 @@
+python AI.py $1

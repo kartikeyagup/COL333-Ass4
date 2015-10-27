@@ -1,21 +1,15 @@
 import copy
-import sys
 from Dealer import EvaluateProb
 
-p = float(sys.argv[1])
-
+p = 4.0/13
 n=40
 DealerProb = EvaluateProb(p)
-DealerBJA = p
-DealerBJF = (1-p)/9
-# DealerProb[8][21] -= DealerBJF
-# DealerProb[9][21] -= DealerBJA 
 # print DealerProb
-# for i in xrange(len(DealerProb)):
-	# print i+2, DealerProb[i]	
+for i in xrange(len(DealerProb)):
+	print i+2, DealerProb[i]	
 # 2 is 0th element and so on
 
-# print "p",p
+print "p",p
 
 AllStatePolicies={}
 # State -> [(Move, Value winning) list]
@@ -42,27 +36,17 @@ class State:
 		return ",".join(map(str,[self.NumCards,self.NumAce, self.FixedCardVal]))
 
 	def __repr__(self):
-		return "{"+ ",".join(map(str,[self.NumCards,self.NumAce, self.FixedCardVal])) + "}"
+		return ",".join(map(str,[self.NumCards,self.NumAce, self.FixedCardVal]))
 
-
-PosAce = [[]]
-
-for i in xrange(21):
-	PosAce.append([i,11+i])
 
 def PossibleScores(inputState):
 	posscores=[inputState.FixedCardVal]
-	if inputState.NumAce==0:
-		posscores = [inputState.FixedCardVal]
-	else:
-		posscores = [inputState.FixedCardVal + inputState.NumAce,inputState.FixedCardVal+ 10+inputState.NumAce]
- 	# for i in xrange(inputState.NumAce):
-	# 	temp = copy.deepcopy(posscores)
-	# 	for i in xrange(len(temp)):
-	# 		temp[i]+=11
-	# 		posscores[i]+=1
-	# 	posscores += temp
-
+	for i in xrange(inputState.NumAce):
+		temp = copy.deepcopy(posscores)
+		for i in xrange(len(temp)):
+			temp[i]+=11
+			posscores[i]+=1
+		posscores += temp
 	return posscores
 
 def GetMaxValidScore(inputState):
@@ -73,51 +57,31 @@ def GetMaxValidScore(inputState):
 			msofar = max(msofar,elem)
 	return msofar
 
-def CalculateWinningStatic(DealerI,elem,numcards):
-	arr= DealerProb[DealerI]
+def CalculateWinningStatic(arr,elem):
+	# TODO: Check for blackjack
+	# TODO: Put in values correctly
 	ans=-1
-	if (0<elem<21):
+	if (0<elem<=21):
 		ans=arr[22]
 		for i in xrange(17,elem):
 			ans+=arr[i]
 		for i in xrange(elem+1,22):
 			ans-=arr[i]
-	if(elem==21):
-		# blackjack possible
-		ans=0
-		if (numcards==2):
-			# player bj
-			if DealerI<8:
-				ans = 1.5
-			elif DealerI==8:
-				# FaceCardDealer
-				ans = 1.5*(1-DealerBJF)
-			else:
-				ans = 1.5*(1-DealerBJA)
-		else:
-			ans=0
-			# Not player bj
-			ans = arr[22]
-			for i in xrange(17,elem):
-				ans += arr[i]	
-			if (DealerI==8):
-				ans -= (DealerBJF)
-			elif (DealerI==9):
-				ans -= (DealerBJA)
 	return ans
 
 def MakeChildren(inputState):
 	ns1 =State(inputState.NumCards+1, inputState.NumAce +1, inputState.FixedCardVal)
 	ans=[]
-	# if GetMaxValidScore(ns1):
+	if GetMaxValidScore(ns1):
 		# print "p",p
-	ans.append((ns1,(1.0-p)/9))
+		ans.append((ns1,(1.0-p)/9))
 	for i in xrange(2,10):
 		newstate=(State(inputState.NumCards+1, inputState.NumAce,i+inputState.FixedCardVal),(1.0-p)/9.0)
-		ans.append(newstate)
+		if GetMaxValidScore(newstate[0])>0:
+			ans.append(newstate)
 	newstate=(State(inputState.NumCards+1, inputState.NumAce,10+inputState.FixedCardVal),p)
-	# if GetMaxValidScore(newstate[0])>0:
-	ans.append(newstate)
+	if GetMaxValidScore(newstate[0])>0:
+		ans.append(newstate)
 	return ans
 
 def AddAll(BigArr):
@@ -144,15 +108,15 @@ def DecideMove(s):
 		# Allcount+=1
 		return AllStatePolicies[s]
 	elif GetMaxValidScore(s)==0:
-		AllStatePolicies[s]=[("S",-1.0) for i in xrange(10)]
+		AllStatePolicies[s]=[("H",0.0) for i in xrange(10)]
 		return AllStatePolicies[s]	
 	else:
 		possibilities= ["H","S"]
 		# Considering S
 		presscore = GetMaxValidScore(s)
 		WinningAmountS = []
-		for elem in xrange(10):
-			WinningAmountS.append(CalculateWinningStatic(elem, presscore,s.NumCards))
+		for elem in DealerProb:
+			WinningAmountS.append(CalculateWinningStatic(elem, presscore))
 
 		# Considering H
 		AllChildren = MakeChildren(s)
@@ -176,7 +140,7 @@ def CalcWinningAmtDoubled(InputState):
 	ans=[0.0]*10
 	sc= GetMaxValidScore(InputState[0])
 	for i in xrange(10):
-		ans[i]=2*InputState[1]*CalculateWinningStatic(i,sc,InputState[0].NumCards)
+		ans[i]=2*InputState[1]*CalculateWinningStatic(DealerProb[i],sc)
 	return ans
 
 def CompressD(InputArr):
@@ -191,15 +155,15 @@ def DecideMoveWithDouble(s):
 	if s in AllStatePolicies:
 		return AllStatePolicies[s]
 	elif GetMaxValidScore(s)==0:
-		AllStatePolicies[s]=[("S",-1.0) for i in xrange(10)]
+		AllStatePolicies[s]=[("H",0.0) for i in xrange(10)]
 		return AllStatePolicies[s]	
 	else:
 		possibilities= ["H","S","D"]
 		# Considering S
 		presscore = GetMaxValidScore(s)
 		WinningAmountS = []
-		for elem in xrange(10):
-			WinningAmountS.append(CalculateWinningStatic(elem, presscore,s.NumCards))
+		for elem in DealerProb:
+			WinningAmountS.append(CalculateWinningStatic(elem, presscore))
 
 		# Considering H,D
 		AllChildren = MakeChildren(s)
@@ -249,7 +213,7 @@ def CalculateWinningSplitA(state):
 	# print state
 	sc= GetMaxValidScore(NewState(state[0][0],state[0][1]))
 	for i in xrange(10):
-		ans[i]=2*state[1]*CalculateWinningStatic(i, sc,3)
+		ans[i]=state[1]*CalculateWinningStatic(DealerProb[i], sc)
 	return ans
 
 
@@ -283,13 +247,11 @@ def DecideMoveSplit(cards1,cards2):
 					for i in xrange(10):
 						TotalSofar[i] += 2*elem[1]*TempEval[i][1]
 			expscore = []
-			if den>0:
+			if den!=0:
 				expscore = map (lambda x: x/den, TotalSofar)
 			else:
-				# print "IN DENOM NEG CASE"
-				expscore = map (lambda x: 99999 if (x>0) else -99999,TotalSofar)
 				# TODO change
-				# expscore = [9999]*10	
+				expscore = [9999]*10	
 			NormalMoves = DecideMoveWithDouble(NewState(cards1,cards2))
 			ans=[0.0]*10
 			for i in xrange(10):
@@ -298,62 +260,33 @@ def DecideMoveSplit(cards1,cards2):
 				else:
 					ans[i] = ("P",expscore[i])
 			return ans
-			if den>0:
-				expscore = map (lambda x: x/den, TotalSofar)
-			else:
-				# print "IN DENOM NEG CASE"
-				expscore = map (lambda x: 99999 if (x>0) else -99999,TotalSofar)
-# p1=State(2,0,17)
+
+# q=State(2,0,6,1)
 # print PossibleScores(p)
 # print p==q
 # a={}
 # a[p]="H"
 # a[q]="D"
 # print str(q)
-# print MakeChildren(p1)
+# print MakeChildren(p)
 # print p in a
 
 # print map(lambda x: (NewState(x[0][0],x[0][1]),x[0]) ,MakeChildrenSplit(11))
 
-
-f1=open("Policy.txt","w")
 ArrAns =[]
 for i in xrange(5, 20):
 	p1=State(2,0,i)
 	# print p1,MakeChildren(p1)
 	ArrAns.append(DecideMoveWithDouble(p1))
-	# print p1, "______", ArrAns[-1], len(AllStatePolicies)
-	f1.write(str(i)+"\t")
-	for b in xrange(0,len(ArrAns[-1])-1):
-		f1.write(ArrAns[-1][b][0]+" ")
-	f1.write(ArrAns[-1][-1][0])
-	f1.write("\n")	
-
-
+	print p1, "______", ArrAns[-1], len(AllStatePolicies)
 for j in xrange(2,10):
 	p1 = State(2, 1, j)
 	ArrAns.append(DecideMoveWithDouble(p1))
-	# print p1, "______", ArrAns[-1], len(AllStatePolicies)
-	f1.write("A"+str(j)+"\t")
-	for b in xrange(0,len(ArrAns[-1])-1):
-		f1.write(ArrAns[-1][b][0]+" ")
-	f1.write(ArrAns[-1][-1][0])
-	f1.write("\n")	
-
+	print p1, "______", ArrAns[-1], len(AllStatePolicies)
 for j in xrange(2,12):
 	ArrAns.append(DecideMoveSplit(j,j))
-	# print j,j,"______", ArrAns[-1], len(AllStatePolicies)
-	if (j==11):
-		f1.write("AA\t")
-	else:
-		f1.write(str(j)+str(j)+"\t")
-	for b in xrange(0,len(ArrAns[-1])-1):
-		f1.write(ArrAns[-1][b][0]+" ")
-	f1.write(ArrAns[-1][-1][0])
-	if(j!=11):
-		f1.write("\n")	
+	print j,j,"______", ArrAns[-1], len(AllStatePolicies)
 
-f1.close()
 	# break
 # p2 = State(2,0, 6)
 # print p2, "______", DecideMove(p2), len(AllStatePolicies)
